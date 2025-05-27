@@ -47,6 +47,14 @@
         * Phân loại xác xuất: Probabilistic Classification
 
     * Ngày 13: Chỉ số đánh giá mô hình
+        
+        * **Mô hình hồi quy**
+            
+            * Sai số tuyệt đối trung bình: Mean Absolute Error (MAE)
+            * Sai số bình phương trung bình: Mean Squared Error (MSE)
+            * Căn bậc hai của MSE: Root Mean Squared Error (RMSE)
+            * Hệ số xác định: R² Score (Coefficient of Determination)
+
         * **Mô hình phân loại**
             * Độ chính xác: Accuracy
             * Độ chính xác dương tinh: Precision
@@ -54,12 +62,6 @@
             * F1 Score
             * Ma trận nhầm lẫn: Confusion Matrix
             * Đường cong ROC và diện tích AUC: ROC Curve & AUC
-        * **Mô hình hồi quy**
-            
-            * Sai số tuyệt đối trung bình: Mean Absolute Error (MAE)
-            * Sai số bình phương trung bình: Mean Squared Error (MSE)
-            * Căn bậc hai của MSE: Root Mean Squared Error (RMSE)
-            * Hệ số xác định: R² Score (Coefficient of Determination)
 
     * Ngày 14: Tổng kết và kiểm tra kiến thức
 
@@ -139,50 +141,203 @@
         * So sánh với TensorFlow
         * Làm quen với tensor, autograd
     * Ngày 35: Tổng kết và kiểm tra kiến thức
-3. ## Tuần 6-7:
-    * Ngày 36: Giới thiệu NLP
-        * Tokenization
-        * Lemmatization
-        * StopWords
-        * Bag-Of-Words
-        * Term Frequency - Inverse Document Frequency (TF-IDF)
-    * Ngày 37: Word Embedding
-        * Word2Vec
-        * GloVe
-        * FastText
-        * Embedding Layer trong Keras
-    * Ngày 38: Transformer & Attention
-        * Ý tưởng cốt lõi của mô hình Transformer
-        * Giới thiệu BERT
-    * Ngày 39: Text Generation
-        * RNN
-        * LSTM
-        * GRU
-        * Tự động sinh văn bản đơn giản
-    * Ngày 40: Chatbot đơn giản
-        * Rule-based Chatbot
-        * ML-based Chatbot
-        * Xây dựng Intent Recognition
-    * Ngày 41: Dự án: Phân tích cảm xúc trên review sản phẩm hoặc tạo chatbot đơn giản
-    * Ngày 42: Giới thiệu về Computer Vision
-        * Classification
-        * Detection
-        * Segmentation
-        * Sử dụng datasets phổ biến: COCO, ImageNet, CIFAR
-    * Ngày 43: Object Detect
-        * YOLO
-        * SSD
-    * Ngày 44: Transfer Learning trong CV
-        * Sử dụng Model Pretrained như ImageNet, ResNet, EffencientNet
-    * Ngày 45: Image Segmentation
-        * Giới thiệu U-Net
-        * Phân vùng ảnh y tế hoặc vật thể
-    * Ngày 46: Face Regconition
-        * Nhận diện khuôn mặt bằng OpenCV + Deep Learning
-    * Ngày 47: Tăng cường dữ liệu (Data Agumentation)
-        * Albumentations
-        * ImageDataGenerator
-    * Ngày 48: Dự án: Nhận diện khuôn mặt hoặc phát hiện đối tượng đơn giản
+3. ## Tuần 6 - 7: Chuyên sâu Natural Language Processing (NLP)
+
+    * Ngày 36: Tổng quan về NLP
+        * NLP là gì? Ứng dụng thực tế
+        * Các tác vụ chính: Text Classification, NER, Summarization, QA, Chatbot
+            - Text Classification: Phân loại văn bản
+            - NER: Nhận diện và phân loại các thực tể
+            - Summarization: Tóm tắt văn bản
+            - QA: Hỏi đáp
+            - Chatbot
+        * NLP truyền thống vs NLP hiện đại (Deep Learning-based)
+        * Pipeline xử lý văn bản
+            - Tiền xử lí văn bản
+
+    * Ngày 37: Tiền xử lý văn bản
+        * Tokenization: từ, subword (BPE, WordPiece)
+            - BPE (Byte Pair Encoding): `unhappiness → [u, n, h, a, p, p, i, n, e, s, s]`
+                - Đếm tần xuất các kí tự lặp liên tiếp
+                - Tìm cặp xuất hiện nhiều nhất: "p p"
+                - Ghép lại thành một token mới: `pp`
+            
+            Code: 
+            ```
+            import tensorflow as tf
+
+            def get_pairs_tf(tokens):
+                """Lấy các cặp ký tự liên tiếp trong tensor"""
+                pairs = tf.stack([tokens[:-1], tokens[1:]], axis=1)
+                return pairs
+
+            def count_pairs_tf(pairs):
+                """Đếm tần suất các cặp"""
+                pairs_str = tf.strings.reduce_join(pairs, axis=1, separator=" ")
+                unique_pairs, _, counts = tf.unique_with_counts(pairs_str)
+                return unique_pairs, counts
+
+            def merge_pair_tf(tokens, merge_pair):
+                """Gộp cặp merge_pair thành một token mới"""
+                i = 0
+                new_tokens = []
+                while i < tf.shape(tokens)[0] - 1:
+                    current = tf.strings.join([tokens[i], tokens[i+1]], separator=" ")
+                    if current == merge_pair:
+                        new_tokens.append(tf.strings.join([tokens[i], tokens[i+1]]))
+                        i += 2
+                    else:
+                        new_tokens.append(tokens[i])
+                        i += 1
+                # Thêm phần tử cuối nếu chưa xử lý
+                if i == tf.shape(tokens)[0] - 1:
+                    new_tokens.append(tokens[i])
+                return tf.convert_to_tensor(new_tokens)
+
+            # Bắt đầu
+            word = "unhappiness"
+            tokens = tf.strings.unicode_split(word, 'UTF-8')
+
+            print("Tokens ban đầu:", tokens.numpy())
+
+            # Bước 1: Tạo cặp
+            pairs = get_pairs_tf(tokens)
+
+            # Bước 2: Đếm cặp
+            unique_pairs, counts = count_pairs_tf(pairs)
+
+            # Lấy cặp phổ biến nhất
+            top_pair_index = tf.argmax(counts)
+            most_common_pair = unique_pairs[top_pair_index]
+            print("Cặp phổ biến nhất:", most_common_pair.numpy())
+
+            # Bước 3: Gộp cặp đó lại
+            new_tokens = merge_pair_tf(tokens, most_common_pair)
+            print("Tokens sau merge:", new_tokens.numpy())
+            ```
+            Kết quả: 
+            ```output
+            Tokens ban đầu: [b'u' b'n' b'h' b'a' b'p' b'p' b'i' b'n' b'e' b's' b's']
+            Cặp phổ biến nhất: b'u n'
+            Tokens sau merge: [b'un' b'h' b'a' b'p' b'p' b'i' b'n' b'e' b's' b's']
+            ```
+            - WordPiece: `playing`
+                - Sau khi tách từ: `play` và `##ing`
+                - `##` dùng để đánh dấu rằng token này không phải đứng đầu từ
+        * Lowercasing, stemming, lemmatization
+            - Lowcasing: chuyển thành viết thường
+            - Stemming: 
+                - Cắt bỏ hậu tố để đưa về từ gốc, nhưng không nhất thiết là từ đúng trong từ điển
+                - `running` -> `runn`
+            - Lemmatization:
+                - Cắt bỏ hậu tố để đưa về từ gốc, nhưng từ sẽ là đúng trong từ điển
+                - `easily` -> `easy`
+
+        * Loại bỏ stopwords, punctuation
+            - Stopwords: là các từ không mang nhiều nghĩa trong ngữ cảnh, được lược bỏ để giảm nhiễu
+            - Punctuation: là các dấu dâu
+        * Thực hành với NLTK, SpaCy, tokenizer từ Hugging Face
+
+    * Ngày 38: Biểu diễn văn bản
+        * Bag-of-Words, TF-IDF
+            - Bag-of-Words: Biểu diễn văn bản bằng tần xuất xuất hiện của từng từ trong văn bản
+                - Ưu điểm: Đơn giản, dễ cài đặt, hiệu quả với các mô hình truyền thống (SVM, Logistic Regression)
+                - Nhược điểm: Không giữ được ngữ nghĩa và thứ tự các từ, Vector thường rất thưa 
+            - TF-IDF: 
+                - Cái tiến BoW bằng cách giảm trọng số của các từ phổ biến
+                - Là sự kết hợp của:
+                    - TF (Term Frequency): Độ thường xuyên của từ trong một văn bản
+                    - IDF: Độ hiếm của từ trong toàn bộ văn bản
+                - Ưu điểm: Nhấn mạnh được các đặc trưng, phân biệt nội dung. Hạn chế ảnh hưởng của các stopwords
+                - Nhược điểm: Không xử lí được ngữ cảnh, đồng nghĩa - trái nghĩa. Vector thưa
+
+
+        * Word2Vec: CBOW, Skip-Gram
+            - CBOW (Continuous Bag of Words): Dự đoán từ ở trung tâm. Ví dụ: `["Tôi","thích","học","ở","trường"]`. Thì CBOW sẽ dự đoán từ trung tâm là `"NLP"`. Và câu hoàn chỉnh sau khi dự đoán là `"Tôi thích học NLP ở trường"`
+            - Skip-Gram: Dùng để dự đoán các từ lân cận, dựa theo từ ở trung tâm
+        * GloVe: Là mô hình học biểu diễn từ dựa trên thống kê toàn cục của văn bản, đặc biệt dựa trên ma trận đồng xuất hiện từ
+        * Contextual Embeddings: 
+            - Giúp mô hình hiểu được nghĩa của từ dựa trên ngữ cảnh của câu thay vì chỉ gán 1 vector tĩnh như Word Embedding.
+            - Danh sách các mô hình liên quan đến Contextual Embeddings
+                - ELMo:
+                    - Sử dụng mô hình ngôn ngữ 2 chiều: Bi-Directional Language Model (BiLM)
+                    - Dùng làm embedding đầu vào cho các mô hình NLP: Classification, NER, QA
+                - BERT:
+                    - Được phát triển từ mô hình ngôn ngữ 2 chiều, giúp hiểu rõ ngữ cảnh của một từ hơn rất nhiều
+                - RoBERTa:
+                    - Là biến thể của BERT, cải tiến hiệu xuất của BERT bằng cách thay đổi phương pháp huấn luyện, sử dụng nhiều dữ liệu hơn và huấn luyện lâu hơn
+                - XLNet:
+                    - Là mô hình tự hồi quy. Là sự kết hợp giữa 2 mô hình: BERT + GPT
+                    - Thay vì dự đoán 1 số token bị mask như BERT, thì XLNet dự đoán tất cả các token theo thứ tự hoán vị ngẫu nhiên
+                - ALBERT:
+                    - Là một bản Lite của BERT, giảm kích thước mô hình và tăng tốc độ huấn luyện, trong khi hiệu xuất vẫn bằng BERT, hoặc có thể cao hơn
+                - ELECTRA:
+                    - Thay vì sử dụng mask như BERT, thì ELECTRA có khả năng phát hiện ra các token bị thay thế
+                    - Là một mô hình nhỏ mà mạnh, hiệu quả huấn luyện tốt hơn
+                - T5: 
+                    - Ý tưởng cả T5 là chuyển tất cả các bài toán về NLP về dạng Text To Text
+                    - Sử dụng kiến trúc chuẩn Transformers
+                - ERNIE
+        * Thực hành so sánh các loại embedding
+
+    * Ngày 39: Mạng nơ-ron cho NLP
+        * RNN, LSTM, GRU: hoạt động và kiến trúc
+        * Bi-directional RNN
+        * Cơ chế Attention cơ bản
+        * Thực hành: Text Classification bằng LSTM (IMDb/Yelp)
+
+    * Ngày 40: Transformer và BERT
+        * Self-Attention là gì
+        * Kiến trúc Transformer Encoder-Decoder
+        * Giới thiệu BERT, GPT, T5
+        * Pre-training vs Fine-tuning
+        * Thực hành: Fine-tune BERT phân loại văn bản
+
+    * Ngày 41: Gán nhãn chuỗi – Named Entity Recognition (NER)
+        * Bài toán Sequence Labeling
+        * BiLSTM-CRF là gì
+        * Hugging Face pipeline cho Token Classification
+        * Thực hành: Huấn luyện BERT cho NER (CoNLL-2003)
+
+    * Ngày 42: Hỏi đáp tự động (Question Answering)
+        * Extractive QA vs Generative QA
+        * Mô hình: DistilBERT, BERT, T5
+        * Dataset: SQuAD
+        * Thực hành: hỏi đáp văn bản với Hugging Face pipeline
+
+    * Ngày 43: Tóm tắt văn bản
+        * Extractive vs Abstractive Summarization
+        * Giới thiệu BART, T5
+        * Thực hành: tóm tắt tin tức, tài liệu dài
+
+    * Ngày 44: Sinh văn bản (Text Generation)
+        * Language Model truyền thống: n-gram, RNN
+        * Mô hình hiện đại: GPT-2, GPT-Neo
+        * Thực hành: Fine-tune GPT-2 để sinh thơ, văn, truyện
+
+    * Ngày 45: Chatbot với RAG (Retrieval-Augmented Generation)
+        * Tổng quan hệ thống RAG
+        * Kết hợp mô hình sinh và truy xuất
+        * Sử dụng thư viện: Haystack, LangChain
+        * Demo chatbot hỏi đáp từ tài liệu nội bộ
+
+    * Ngày 46: NLP nâng cao – Prompt Engineering
+        * Zero-shot, few-shot learning
+        * Prompting: In-context Learning, Chain-of-Thought
+        * Sử dụng OpenAI API hoặc Transformers
+        * Thực hành: Viết prompt hiệu quả cho bài toán NLP
+
+    * Ngày 47: Dự án 1 – Phân loại cảm xúc từ bình luận
+        * Thu thập dữ liệu: IMDb, Facebook, Youtube comments
+        * Tiền xử lý văn bản
+        * Huấn luyện mô hình BERT hoặc BiLSTM
+        * Trực quan hóa kết quả bằng Streamlit
+
+    * Ngày 48: Dự án 2 – Chatbot hỏi đáp tài liệu
+        * Thu thập dữ liệu nội bộ (PDF, DOC, TXT)
+        * Xây dựng hệ thống RAG (retriever + generator)
+        * Triển khai demo chatbot với giao diện (Gradio/Streamlit)
+
 4. ## Tuần 8: Hoàn thiện dự án và tổng kết
     * Demo Jupiter
     * Deploy Streamlit App
