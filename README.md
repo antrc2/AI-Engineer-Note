@@ -285,17 +285,84 @@
         * Bi-directional RNN
         * Cơ chế Attention cơ bản
         * Thực hành: Text Classification bằng LSTM (IMDb/Yelp)
+        ```python
+        import numpy as np
+        from IPython import get_ipython
+        from IPython.display import display
+        # %%
+        import tensorflow_datasets as tfds
+        import tensorflow as tf
+        from tensorflow.keras.preprocessing.text import Tokenizer
+        from tensorflow.keras.preprocessing.sequence import pad_sequences
+        from tensorflow.keras.models import Sequential # Import Sequential model
+        from tensorflow.keras.layers import Embedding, Bidirectional, LSTM, Dense # Import necessary layers
 
+        # Load the dataset
+        datasets, info = tfds.load(name="imdb_reviews", with_info=True, as_supervised=True)
+
+        # Split the dataset
+        train_data, test_data = datasets['train'], datasets['test']
+
+        # Create a function to extract text from the dataset elements
+        def extract_text(text, label):
+            return text
+
+        # Apply the function to the datasets to get only the text
+        train_texts = train_data.map(extract_text)
+        test_texts = test_data.map(extract_text)
+        train_texts = [text.numpy().decode('utf-8') for text in train_texts]
+        test_texts = [text.numpy().decode('utf-8') for text in test_texts]
+        # Initialize and fit the tokenizer on the text data
+        tokenizer = Tokenizer(num_words=10000, oov_token="<OOV>")
+        # Fit the tokenizer on the extracted text data
+        tokenizer.fit_on_texts(train_texts)
+
+        # 2. Mã hóa văn bản (Tokenize the text data)
+        # Convert the extracted text data to sequences
+        train_sequences = tokenizer.texts_to_sequences(train_texts)
+        # Pad the training sequences
+        train_padded = pad_sequences(train_sequences, maxlen=250, padding='post')
+
+        # Convert the extracted text data to sequences
+        test_sequences = tokenizer.texts_to_sequences(test_texts)
+        # Pad the testing sequences
+        test_padded = pad_sequences(test_sequences, maxlen=250, padding='post')
+        # %%
+        # Convert labels to NumPy arrays
+        train_labels = np.array([label.numpy() for _, label in train_data])
+        test_labels = np.array([label.numpy() for _, label in test_data])
+        # %%
+        model = Sequential([
+            Embedding(input_dim=10000, output_dim=64, input_shape=(250,)),
+            Bidirectional(LSTM(64)), # Sử dụng Bidirectional để tăng độ chính xác
+            Dense(32, activation='relu'),
+            Dense(1, activation='sigmoid')
+        ])
+
+        # %%
+        model.summary()
+        # %%
+        model.compile(optimizer="adam",loss="binary_crossentropy",metrics=['acc'])
+        # %%
+        model.fit(train_padded, train_labels, epochs=10, batch_size=32,validation_data=(test_padded, test_labels))
+        ```
     * Ngày 40: Transformer và BERT
         * Self-Attention là gì
+            - Giúp mô hình tập trung vào các phần khác nhau trong cùng một chuỗi văn bản
+            - Giúp xác định các từ liên quan đang xét
+            - Cơ chế hoạt động: K Q V
         * Kiến trúc Transformer Encoder-Decoder
         * Giới thiệu BERT, GPT, T5
         * Pre-training vs Fine-tuning
         * Thực hành: Fine-tune BERT phân loại văn bản
 
     * Ngày 41: Gán nhãn chuỗi – Named Entity Recognition (NER)
-        * Bài toán Sequence Labeling
-        * BiLSTM-CRF là gì
+        * Bài toán Sequence Labeling:
+            - Là bài toán về gắn nhãn chuỗi, nơi mà mỗi phần tử trong một chuỗi đầu vào được gắn một nhãn tương ứng 
+        * BiLSTM-CRF:
+            - là kiến trúc mô hình rất mạnh trong việc gắn nhãn chuỗi
+            - BiLSTM: mô hình học đặc trưng theo ngữ cảnh 2 chieeuf
+            - CRF: Giúp tối ưu hóa việc dự đoán nhãn
         * Hugging Face pipeline cho Token Classification
         * Thực hành: Huấn luyện BERT cho NER (CoNLL-2003)
 
@@ -306,12 +373,27 @@
         * Thực hành: hỏi đáp văn bản với Hugging Face pipeline
 
     * Ngày 43: Tóm tắt văn bản
-        * Extractive vs Abstractive Summarization
+        * Extractive
+            - Là phương pháp chọn ra những câu/đoạn quan trọng nhất từ văn bản gốc.
+            - Đặc điểm: 
+                - Không tạo ra câu mới, chỉ trích ra từ những câu gốc
+                - Không thay đổi từ ngữ hay cấu trúc của câu
+        * Abstractive Summarization
+            - Là phương pháp hiểu nội dung văn bản và tóm tắt lại bằng ngôn ngữ tự nhiên
+            - Đặc điểm: 
+                - Tạo ra nội dung mới, không bị giới hạn bởi các câu gốc
+                - Nhưng cần đến các mô hình mạnh như Transformers, RNN
         * Giới thiệu BART, T5
         * Thực hành: tóm tắt tin tức, tài liệu dài
 
     * Ngày 44: Sinh văn bản (Text Generation)
-        * Language Model truyền thống: n-gram, RNN
+        * Language Model truyền thống: 
+            - N-Gram: 
+                - Là mô hình thống kê, sử dụng xác xuất để dự đoán từ tiếp theo, dựa trên (n-1) từ trước đó
+                - Không cần huấn luyện mạng neuron, nhưng không thể nhớ được ngữ cảnh ở xa, chỉ nhớ được (n-1) từ
+            - RNN: 
+                - Là một mạng neuron chuyên xử lí chuỗi
+                - Nó giữ lại trạng thái ẩn để nhớ ngữ cảnh từ các bước trước, giúp mô hình nhớ được dài hạn
         * Mô hình hiện đại: GPT-2, GPT-Neo
         * Thực hành: Fine-tune GPT-2 để sinh thơ, văn, truyện
 
@@ -322,8 +404,15 @@
         * Demo chatbot hỏi đáp từ tài liệu nội bộ
 
     * Ngày 46: NLP nâng cao – Prompt Engineering
-        * Zero-shot, few-shot learning
-        * Prompting: In-context Learning, Chain-of-Thought
+        * Zero-shot
+            - Là khả năng mà mô hình có thể giải quyết 1 nhiệm vụ mà chưa từng được thấy bao giờ trong quá trình huấn luyện
+        * One-shot
+            - Là mô hình chưa thấy ví dụ của tác vụ nào, nhưng vẫn hiểu và làm được nhờ hiểu lệnh (instruction) tự nhiên
+        * Few-shot
+            - Là khả năng mà mô hình chỉ học được 1 số tác vụ ban đầu, và những tác vụ sau chỉ bắt trước theo
+        * Prompting: In-Context Learning, Chain-of-Thought
+            - ICL: là mô hình sử dụng ví dụ trong prompt để học cách giải quyết tác vụ thông qua các ví dụ trong prompt. Có thể hiểu cái này nó gần giống với Few-Shot
+            - CoT: kỹ thuật prompt khuyến khích mô hình tạo ra chuỗi suy luận từng bước trước khi đưa ra câu trả lời cuối cùng. Khác với ICL chỉ cần ví dụ input-output, CoT chú trọng vào trình tự suy nghĩ. Tuy nhiên, CoT thường được kết hợp với ICL để đạt hiệu quả cao hơn.
         * Sử dụng OpenAI API hoặc Transformers
         * Thực hành: Viết prompt hiệu quả cho bài toán NLP
 
