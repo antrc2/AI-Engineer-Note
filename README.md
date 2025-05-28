@@ -163,7 +163,7 @@
                 - Ghép lại thành một token mới: `pp`
             
             Code: 
-            ```
+            ```python
             import tensorflow as tf
 
             def get_pairs_tf(tokens):
