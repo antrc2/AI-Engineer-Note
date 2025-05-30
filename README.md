@@ -476,7 +476,7 @@
                 return [idx2word[i] for i in top_ids]
 
             print(predict_context("deep"))
-```
+            ```
         * GloVe: Là mô hình học biểu diễn từ dựa trên thống kê toàn cục của văn bản, đặc biệt dựa trên ma trận đồng xuất hiện từ
         * Contextual Embeddings: 
             - Giúp mô hình hiểu được nghĩa của từ dựa trên ngữ cảnh của câu thay vì chỉ gán 1 vector tĩnh như Word Embedding.
@@ -507,11 +507,11 @@
         * Bi-directional RNN
         * Cơ chế Attention cơ bản
         * Thực hành: Text Classification bằng LSTM (IMDb/Yelp)
+
         ```python
         import numpy as np
         from IPython import get_ipython
         from IPython.display import display
-        # %%
         import tensorflow_datasets as tfds
         import tensorflow as tf
         from tensorflow.keras.preprocessing.text import Tokenizer
@@ -549,25 +549,18 @@
         test_sequences = tokenizer.texts_to_sequences(test_texts)
         # Pad the testing sequences
         test_padded = pad_sequences(test_sequences, maxlen=250, padding='post')
-        # %%
         # Convert labels to NumPy arrays
         train_labels = np.array([label.numpy() for _, label in train_data])
         test_labels = np.array([label.numpy() for _, label in test_data])
-        # %%
         model = Sequential([
             Embedding(input_dim=10000, output_dim=64, input_shape=(250,)),
             Bidirectional(LSTM(64)), # Sử dụng Bidirectional để tăng độ chính xác
             Dense(32, activation='relu'),
             Dense(1, activation='sigmoid')
         ])
-
-        # %%
         model.summary()
-        # %%
         model.compile(optimizer="adam",loss="binary_crossentropy",metrics=['acc'])
-        # %%
-        model.fit(train_padded, train_labels, epochs=10, batch_size=32,validation_data=(test_padded, test_labels))
-        ```
+        model.fit(train_padded, train_labels, epochs=10, batch_size=32,validation_data=(test_padded, test_labels))```
     * Ngày 40: Transformer và BERT
         * Self-Attention là gì
             - Giúp mô hình tập trung vào các phần khác nhau trong cùng một chuỗi văn bản
