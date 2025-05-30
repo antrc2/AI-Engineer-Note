@@ -581,6 +581,77 @@
         * Hugging Face pipeline cho Token Classification
         * Thực hành: Huấn luyện BERT cho NER (CoNLL-2003)
 
+            ```python
+            from datasets import load_dataset
+            from tensorflow.keras.preprocessing.text import Tokenizer
+            from tensorflow.keras.preprocessing.sequence import pad_sequences  # Sửa import này
+            from tensorflow.keras.models import Sequential
+            from tensorflow.keras.layers import InputLayer, Embedding, Bidirectional, LSTM, TimeDistributed, Dense
+            import tensorflow as tf
+
+            # 1. Load dataset
+            dataset = load_dataset("eriktks/conll2003")
+            train_dataset = dataset["train"]
+            val_dataset = dataset["validation"]
+            test_dataset = dataset["test"]
+
+            # Lấy danh sách nhãn
+            label_list = dataset["train"].features["ner_tags"].feature.names
+            num_labels = len(label_list)
+
+            # Hàm tách tokens và nhãn
+            def extract_tokens_and_labels(dataset_split):
+                all_tokens = []
+                all_labels = []
+                for item in dataset_split:
+                    all_tokens.append(item["tokens"])
+                    all_labels.append(item["ner_tags"])
+                return all_tokens, all_labels
+
+            train_tokens, train_labels = extract_tokens_and_labels(train_dataset)
+            val_tokens, val_labels = extract_tokens_and_labels(val_dataset)
+            test_tokens, test_labels = extract_tokens_and_labels(test_dataset)
+
+            # Thông số
+            vocab_size = 10000
+            maxlen = 300
+
+            # 2. Tạo vocabulary từ tất cả tokens (không join thành sentences)
+            all_tokens_flat = [token for tokens in train_tokens for token in tokens]
+            tokenizer = Tokenizer(num_words=vocab_size, oov_token='[OOV]')
+            tokenizer.fit_on_texts(all_tokens_flat)
+
+            # Convert tokens to sequences (giữ nguyên cấu trúc sentence-level)
+            def tokens_to_sequences(tokens_list, tokenizer):
+                sequences = []
+                for tokens in tokens_list:
+                    seq = tokenizer.texts_to_sequences(tokens)
+                    seq = [s[0] if s else tokenizer.word_index['[OOV]'] for s in seq]
+                    sequences.append(seq)
+                return sequences
+            train_sequences = tokens_to_sequences(train_tokens, tokenizer)
+            val_sequences = tokens_to_sequences(val_tokens, tokenizer) 
+            test_sequences = tokens_to_sequences(test_tokens, tokenizer)
+            train_sequences = pad_sequences(train_sequences, maxlen=maxlen, padding='post', truncating='post')
+            val_sequences = pad_sequences(val_sequences, maxlen=maxlen, padding='post', truncating='post')
+            test_sequences = pad_sequences(test_sequences, maxlen=maxlen, padding='post', truncating='post')
+            train_labels_padded = pad_sequences(train_labels, maxlen=maxlen, padding='post', truncating='post', value=0)
+            val_labels_padded = pad_sequences(val_labels, maxlen=maxlen, padding='post', truncating='post', value=0)
+            test_labels_padded = pad_sequences(test_labels, maxlen=maxlen, padding='post', truncating='post', value=0)
+            model = Sequential([
+                InputLayer(shape=(maxlen,)),
+                Embedding(input_dim=vocab_size, output_dim=64),  # Tự động mask padding=0
+                Bidirectional(LSTM(64, return_sequences=True)),
+                TimeDistributed(Dense(64, activation='relu')),
+                TimeDistributed(Dense(32, activation='relu')),
+                TimeDistributed(Dense(num_labels, activation='softmax'))
+            ])
+            model.compile(optimizer='adam', 
+                        loss='sparse_categorical_crossentropy', 
+                        metrics=['accuracy'])
+            model.summary()
+            model.fit(train_sequences, train_labels_padded, validation_data=(val_sequences, val_labels_padded), epochs=10, batch_size=32)
+            ```
     * Ngày 42: Hỏi đáp tự động (Question Answering)
         * Extractive QA vs Generative QA
         * Mô hình: DistilBERT, BERT, T5
