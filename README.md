@@ -224,6 +224,37 @@
             - WordPiece: `playing`
                 - Sau khi tách từ: `play` và `##ing`
                 - `##` dùng để đánh dấu rằng token này không phải đứng đầu từ
+            ```python
+            import tensorflow as tf
+            import tensorflow_text as tf_text
+
+            # Giả sử đây là từ điển WordPiece đã được xây dựng trước
+            vocab = tf.constant(["[PAD]", "[UNK]", "a", "b", "c", "##a", "##b", "##c"])
+            vocab_table = tf.lookup.StaticVocabularyTable(
+                tf.lookup.KeyValueTensorInitializer(
+                    keys=vocab,
+                    values=tf.range(tf.shape(vocab)[0], dtype=tf.int64),
+                ),
+                num_oov_buckets=1  # Cho từ ngoài từ điển
+            )
+
+            # Khởi tạo tokenizer
+            tokenizer = tf_text.WordpieceTokenizer(
+                vocab_lookup_table=vocab_table,
+                token_out_type=tf.string,
+                suffix_indicator="##",
+                max_bytes_per_word=100,
+                unknown_token="[UNK]",
+                split_unknown_characters=False
+            )
+
+            # Tokenize một câu
+            text = tf.constant(["abcab", "a b c ##a ##b ##c"])
+            tokens = tokenizer.tokenize(text)
+
+            print(tokens.to_list())
+
+            ```
         * Lowercasing, stemming, lemmatization
             - Lowcasing: chuyển thành viết thường
             - Stemming: 
@@ -243,6 +274,31 @@
             - Bag-of-Words: Biểu diễn văn bản bằng tần xuất xuất hiện của từng từ trong văn bản
                 - Ưu điểm: Đơn giản, dễ cài đặt, hiệu quả với các mô hình truyền thống (SVM, Logistic Regression)
                 - Nhược điểm: Không giữ được ngữ nghĩa và thứ tự các từ, Vector thường rất thưa 
+            ```python
+            from tensorflow.keras.preprocessing.text import Tokenizer
+
+            # Dữ liệu
+            sentences = [
+                "I love deep learning",
+                "I love NLP",
+                "I hate bugs"
+            ]
+
+            # Khởi tạo tokenizer và học từ vựng
+            tokenizer = Tokenizer()
+            tokenizer.fit_on_texts(sentences)
+
+            # Biểu diễn dạng Bag-of-Words (dạng count vector)
+            bow_matrix = tokenizer.texts_to_matrix(sentences, mode='count')
+
+            # In từ điển từ
+            print("Word Index:", tokenizer.word_index)
+
+            # In kết quả
+            print("BoW Matrix:")
+            print(bow_matrix)
+
+            ```
             - TF-IDF: 
                 - Cái tiến BoW bằng cách giảm trọng số của các từ phổ biến
                 - Là sự kết hợp của:
@@ -250,11 +306,177 @@
                     - IDF: Độ hiếm của từ trong toàn bộ văn bản
                 - Ưu điểm: Nhấn mạnh được các đặc trưng, phân biệt nội dung. Hạn chế ảnh hưởng của các stopwords
                 - Nhược điểm: Không xử lí được ngữ cảnh, đồng nghĩa - trái nghĩa. Vector thưa
+            ```python
+            from tensorflow.keras.preprocessing.text import Tokenizer
 
+            # Dữ liệu đầu vào
+            sentences = [
+                "I love deep learning",
+                "I love NLP",
+                "I hate bugs"
+            ]
+
+            # Khởi tạo tokenizer
+            tokenizer = Tokenizer()
+            tokenizer.fit_on_texts(sentences)
+
+            # Biểu diễn dạng TF-IDF
+            tfidf_matrix = tokenizer.texts_to_matrix(sentences, mode='tfidf')
+
+            # In kết quả
+            print("Từ điển từ:", tokenizer.word_index)
+            print("TF-IDF Matrix:")
+            print(tfidf_matrix)
+            ``` 
 
         * Word2Vec: CBOW, Skip-Gram
             - CBOW (Continuous Bag of Words): Dự đoán từ ở trung tâm. Ví dụ: `["Tôi","thích","học","ở","trường"]`. Thì CBOW sẽ dự đoán từ trung tâm là `"NLP"`. Và câu hoàn chỉnh sau khi dự đoán là `"Tôi thích học NLP ở trường"`
+            ```python
+            import numpy as np
+            import tensorflow as tf
+            from tensorflow.keras.models import Model
+            from tensorflow.keras.layers import Input, Embedding, Lambda, Dense
+            from tensorflow.keras.preprocessing.text import Tokenizer
+            from tensorflow.keras.preprocessing.sequence import skipgrams
+            from tensorflow.keras.preprocessing.sequence import pad_sequences
+            from tensorflow.keras.utils import to_categorical
+            import random
+
+            # 1. Dữ liệu mẫu
+            corpus = ["I like deep learning", "I like NLP", "I enjoy flying"]
+
+            # 2. Token hóa
+            tokenizer = Tokenizer()
+            tokenizer.fit_on_texts(corpus)
+            word2idx = tokenizer.word_index
+            idx2word = {v: k for k, v in word2idx.items()}
+            vocab_size = len(word2idx) + 1  # +1 vì padding = 0
+
+            # 3. Chuyển văn bản thành sequence số
+            sequences = tokenizer.texts_to_sequences(corpus)
+            window_size = 2
+
+            # 4. Tạo dữ liệu context -> center (CBOW)
+            def generate_cbow_data(sequences, window_size):
+                data = []
+                for seq in sequences:
+                    for idx, word in enumerate(seq):
+                        start = max(0, idx - window_size)
+                        end = min(len(seq), idx + window_size + 1)
+                        context = [seq[i] for i in range(start, end) if i != idx]
+                        if len(context) == 0:
+                            continue
+                        data.append((context, word))
+                return data
+
+            data = generate_cbow_data(sequences, window_size)
+
+            # 5. Chuyển dữ liệu thành dạng numpy
+            max_context_len = 2 * window_size
+            X = []
+            y = []
+
+            for context_words, target in data:
+                context_padded = pad_sequences([context_words], maxlen=max_context_len)[0]
+                X.append(context_padded)
+                y.append(to_categorical(target, num_classes=vocab_size))
+
+            X = np.array(X)
+            y = np.array(y)
+
+            # 6. Mô hình CBOW
+            embedding_dim = 50
+
+            input_context = Input(shape=(max_context_len,))
+            embedding = Embedding(input_dim=vocab_size, output_dim=embedding_dim, input_length=max_context_len)(input_context)
+            mean = Lambda(lambda x: tf.reduce_mean(x, axis=1))(embedding)
+            output = Dense(vocab_size, activation='softmax')(mean)
+
+            model = Model(inputs=input_context, outputs=output)
+            model.compile(loss='categorical_crossentropy', optimizer='adam')
+            model.summary()
+
+            # 7. Huấn luyện
+            model.fit(X, y, epochs=700, verbose=1)
+
+            # 8. Thử nghiệm
+            def predict_center(context_words):
+                context_ids = [word2idx.get(w, 0) for w in context_words]
+                context_padded = pad_sequences([context_ids], maxlen=max_context_len)
+                pred = model.predict(context_padded, verbose=0)
+                predicted_id = np.argmax(pred)
+                return idx2word.get(predicted_id, "UNKNOWN")
+
+            print(predict_center(["I", "learning", "deep"]))  # Dự đoán từ trung tâm
+
+            ```
             - Skip-Gram: Dùng để dự đoán các từ lân cận, dựa theo từ ở trung tâm
+            ```python
+            import numpy as np
+            import tensorflow as tf
+            from tensorflow.keras.models import Model
+            from tensorflow.keras.layers import Input, Embedding, Dense, Reshape
+            from tensorflow.keras.preprocessing.text import Tokenizer
+            from tensorflow.keras.preprocessing.sequence import pad_sequences
+            from tensorflow.keras.utils import to_categorical
+
+            # 1. Dữ liệu đầu vào
+            corpus = ["I like deep learning", "I like NLP", "I enjoy flying"]
+
+            # 2. Token hóa
+            tokenizer = Tokenizer()
+            tokenizer.fit_on_texts(corpus)
+            word2idx = tokenizer.word_index
+            idx2word = {v: k for k, v in word2idx.items()}
+            vocab_size = len(word2idx) + 1
+
+            # 3. Chuyển text thành số
+            sequences = tokenizer.texts_to_sequences(corpus)
+
+            # 4. Tạo dữ liệu dạng (center, context) cho Skip-Gram
+            def generate_skipgram_data(sequences, window_size):
+                pairs = []
+                for seq in sequences:
+                    for i, center in enumerate(seq):
+                        for j in range(-window_size, window_size + 1):
+                            if j == 0:
+                                continue
+                            context_pos = i + j
+                            if context_pos >= 0 and context_pos < len(seq):
+                                context = seq[context_pos]
+                                pairs.append((center, context))
+                return pairs
+
+            pairs = generate_skipgram_data(sequences, window_size=2)
+
+            # 5. Chuyển thành numpy array
+            X = np.array([x[0] for x in pairs])
+            y = np.array([to_categorical(x[1], num_classes=vocab_size) for x in pairs])
+
+            # 6. Xây mô hình Skip-Gram
+            embedding_dim = 50
+
+            input_center = Input(shape=(1,))
+            embedding = Embedding(input_dim=vocab_size, output_dim=embedding_dim, input_length=1)(input_center)
+            embedding = Reshape((embedding_dim,))(embedding)
+            output = Dense(vocab_size, activation='softmax')(embedding)
+
+            model = Model(inputs=input_center, outputs=output)
+            model.compile(loss='categorical_crossentropy', optimizer='adam')
+            model.summary()
+
+            # 7. Huấn luyện
+            model.fit(X, y, epochs=500, verbose=1)
+
+            # 8. Dự đoán context từ từ trung tâm
+            def predict_context(center_word, topn=3):
+                center_id = word2idx.get(center_word, 0)
+                pred = model.predict(np.array([[center_id]]), verbose=0)[0]
+                top_ids = pred.argsort()[-topn:][::-1]
+                return [idx2word[i] for i in top_ids]
+
+            print(predict_context("deep"))
+```
         * GloVe: Là mô hình học biểu diễn từ dựa trên thống kê toàn cục của văn bản, đặc biệt dựa trên ma trận đồng xuất hiện từ
         * Contextual Embeddings: 
             - Giúp mô hình hiểu được nghĩa của từ dựa trên ngữ cảnh của câu thay vì chỉ gán 1 vector tĩnh như Word Embedding.
